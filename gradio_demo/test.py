@@ -52,8 +52,8 @@ COLOR_PALETTE = [
 
 random_seed = 42
 video_length = 201
-W = 1024
-H = W
+W = 1920
+H = 1080
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def get_pipe_image_and_video_predictor():
@@ -269,7 +269,15 @@ def track_video(n_frames, video_state):
         for i, logit in enumerate(out_mask_logits):
             out_mask = logit.cpu().squeeze().detach().numpy()
             out_mask = (out_mask[:,:,None] > 0).astype(np.float32)
-            mask += out_mask
+
+            # FHD HACK
+            # Resize to match mask's shape and add 3 channels
+            out_mask_resized = cv2.resize(out_mask, (mask.shape[1], mask.shape[0]),
+                                          interpolation=cv2.INTER_NEAREST)      # shape (1088, 1920)
+            out_mask_resized = out_mask_resized[:, :, None]                     # shape (1088, 1920, 1)
+            out_mask_resized = np.tile(out_mask_resized, (1, 1, 3))        # shape (1088, 1920, 3)
+            mask += out_mask_resized
+
         mask = np.clip(mask, 0, 1)
         mask = cv2.resize(mask, (W_, H_))
         mask_frames.append(mask)
